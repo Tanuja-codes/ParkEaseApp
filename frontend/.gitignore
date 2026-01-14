@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+.env.example
+
+# Custom scripts you don’t want on GitHub
+CREATE_REMAINING_FILES.sh
+INSTALLATION_GUIDE.md
+PROJECT_STRUCTURE.md
+README.md
