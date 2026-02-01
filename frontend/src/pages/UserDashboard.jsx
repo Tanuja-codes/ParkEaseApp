@@ -95,7 +95,7 @@ const UserDashboard = () => {
     setSearchLoading(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationSearch)}&limit=1`
+             `http://localhost:5000/api/geocode?q=${encodeURIComponent(locationSearch)}`
       );
       const data = await response.json();
 
