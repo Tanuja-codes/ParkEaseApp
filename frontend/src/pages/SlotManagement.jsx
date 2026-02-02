@@ -27,11 +27,13 @@ const SlotManagement = () => {
   };
 
   const handleLocationChange = (e) => {
-    const loc = locations.find(l => l._id === e.target.value);
+    const loc = locations.find(l => l.id === e.target.value);
+
     setSelectedLocation(loc);
     fetchSlots(e.target.value);
 
       if (loc) {
+          fetchSlots(loc.id);
     setFormData({
       ...formData,
       latitude: loc.latitude.toString(),
@@ -46,13 +48,13 @@ const SlotManagement = () => {
     try {
       await slotAPI.create({
         ...formData,
-        location: selectedLocation._id,
+        location: selectedLocation.id,
         latitude: parseFloat(formData.latitude),
         longitude: parseFloat(formData.longitude)
       });
       alert('Slot added successfully');
       setShowAddForm(false);
-      fetchSlots(selectedLocation._id);
+      fetchSlots(selectedLocation.id);
     } catch (error) {
       alert(error.response?.data?.message || 'Error adding slot');
     }
@@ -62,7 +64,7 @@ const SlotManagement = () => {
     const newStatus = currentStatus === 'available' ? 'booked' : 'available';
     try {
       await slotAPI.toggleStatus(slotId, newStatus);
-      fetchSlots(selectedLocation._id);
+      fetchSlots(selectedLocation.id);
     } catch (error) {
       alert('Error toggling status');
     }
@@ -72,7 +74,7 @@ const SlotManagement = () => {
     const newStatus = currentStatus === 'available' ? 'booked' : 'available';
     try {
       await slotAPI.toggleStatus(slotId, newStatus);
-      fetchSlots(selectedLocation._id);
+      fetchSlots(selectedLocation.id);
     } catch (error) {
       alert('Error toggling status');
     }
@@ -82,7 +84,7 @@ const SlotManagement = () => {
     if (window.confirm('Delete this slot?')) {
       try {
         await slotAPI.delete(slotId);
-        fetchSlots(selectedLocation._id);
+        fetchSlots(selectedLocation.id);
       } catch (error) {
         alert('Error deleting slot');
       }
@@ -103,10 +105,11 @@ const SlotManagement = () => {
         <div className="bg-white p-6 rounded-xl shadow-lg mb-6">
           <label className="block text-lg font-bold mb-2">Select Location</label>
           <select onChange={handleLocationChange}
-            className="w-full px-4 py-2 border rounded-lg">
+            className="w-full px-4 py-2 border rounded-lg"
+            value={selectedLocation?.id || ''}>
             <option value="">Choose a location</option>
             {locations.map(loc => (
-              <option key={loc._id} value={loc._id}>{loc.name}</option>
+              <option key={loc.id} value={loc.id}>{loc.name}</option>
             ))}
           </select>
         </div>
@@ -152,18 +155,18 @@ const SlotManagement = () => {
 
             <div className="grid md:grid-cols-3 gap-4">
               {slots.map(slot => (
-                <div key={slot._id} className="bg-white p-4 rounded-lg shadow">
+                <div key={slot.id} className="bg-white p-4 rounded-lg shadow">
                   <h3 className="font-bold text-lg">Slot {slot.slotNo}</h3>
                   <p className="text-sm text-gray-600">Type: {slot.vehicleType}</p>
                   <p className={`text-sm mt-2 ${slot.status === 'available' ? 'text-green-600' : 'text-red-600'}`}>
                     Status: {slot.status}
                   </p>
                   <div className="mt-4 space-x-2">
-                    <button onClick={() => toggleSlotStatus(slot._id, slot.status)}
+                    <button onClick={() => toggleSlotStatus(slot.id, slot.status)}
                       className="px-3 py-1 bg-blue-600 text-white rounded text-sm">Toggle</button>
-                      <button onClick={() => toggleMaintenanceStatus(slot._id, slot.status)}
+                      <button onClick={() => toggleMaintenanceStatus(slot.id, slot.status)}
                       className="px-3 py-1 bg-yellow-600 text-white rounded text-sm">Maintenance</button>
-                    <button onClick={() => deleteSlot(slot._id)}
+                    <button onClick={() => deleteSlot(slot.id)}
                       className="px-3 py-1 bg-red-600 text-white rounded text-sm">Delete</button>
                   </div>
                 </div>

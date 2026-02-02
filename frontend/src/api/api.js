@@ -13,9 +13,16 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    if (userId) {
+      config.headers['userId'] = userId;
+    }
+
     return config;
   },
   (error) => {
@@ -92,15 +99,15 @@ export const adminAPI = {
 // Reports API
 export const reportsAPI = {
   getMonthlyUsage: (params) => api.get('/reports/monthly-usage', { params }),
-  exportBookings: (params) => api.get('/reports/export/bookings', { 
+  exportBookings: (params) => api.get('/reports/export/bookings', {
     params,
     responseType: 'blob'
   }),
-  exportSlotUsage: (params) => api.get('/reports/export/slot-usage', { 
+  exportSlotUsage: (params) => api.get('/reports/export/slot-usage', {
     params,
     responseType: 'blob'
   }),
-  exportRevenue: (params) => api.get('/reports/export/revenue', { 
+  exportRevenue: (params) => api.get('/reports/export/revenue', {
     params,
     responseType: 'blob'
   }),

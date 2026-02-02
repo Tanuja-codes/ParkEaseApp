@@ -57,9 +57,14 @@ const MyBookings = () => {
   const fetchBookings = async () => {
     try {
       const response = await bookingAPI.getMyBookings();
+       console.log('Bookings response:', response.data); // Add this
       setBookings(response.data);
     } catch (error) {
-      console.error('Error:', error);
+     console.error('Error details:', error.response?.data); // Add this
+        console.error('Full error:', error); // Add this
+
+        // Show user-friendly error
+        alert('Error loading bookings. Please check console for details.');
     } finally {
       setLoading(false);
     }

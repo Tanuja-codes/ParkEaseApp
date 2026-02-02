@@ -13,6 +13,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/slots")
+//@CrossOrigin(origins = "*")
 public class SlotController {
 
     @Autowired
@@ -33,8 +34,13 @@ public class SlotController {
     public ResponseEntity<?> getAvailableSlots(@PathVariable String locationId,
                                                @RequestParam(required = false) Date startTime) {
         List<Slot> slots = slotRepository.findByLocationAndStatusAndIsActiveTrueOrderBySlotNoAsc(locationId, "available");
-        // Filter by nextAvailableTime
-        slots.removeIf(slot -> slot.getNextAvailableTime().after(startTime));
+
+        // Only filter by nextAvailableTime if startTime is provided
+        if (startTime != null) {
+            slots.removeIf(slot -> slot.getNextAvailableTime() != null &&
+                    slot.getNextAvailableTime().after(startTime));
+        }
+
         return ResponseEntity.ok(slots);
     }
 

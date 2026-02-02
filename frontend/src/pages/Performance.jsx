@@ -6,7 +6,7 @@ import { adminAPI, locationAPI, reportsAPI } from '../api/api';
 const Performance = () => {
   const navigate = useNavigate();
   const [locations, setLocations] = useState([]);
-  const [selectedLocation, setSelectedLocation] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('all'); // Changed from '' to 'all'
   const [stats, setStats] = useState(null);
   const [comparison, setComparison] = useState(null);
   const [peakHours, setPeakHours] = useState(null);
@@ -17,29 +17,47 @@ const Performance = () => {
   });
 
   useEffect(() => {
-    fetchData();
-  }, [selectedLocation, period]);
+    fetchLocations();
+  }, []);
+
+  useEffect(() => {
+    if (locations.length > 0) {
+      fetchData();
+    }
+  }, [selectedLocation, period, locations]);
+
+  const fetchLocations = async () => {
+    try {
+      const response = await locationAPI.getAll();
+      setLocations(response.data);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
-      const [locsRes, statsRes, compRes, peakRes] = await Promise.all([
-        locationAPI.getAll(),
-        adminAPI.getDashboardStats({ locationId: selectedLocation, period }),
-        adminAPI.getRevenueComparison({ locationId: selectedLocation }),
-        adminAPI.getPeakHours({ locationId: selectedLocation, days: 7 })
+      // If "all" is selected, pass null or undefined to backend
+      const locationParam = selectedLocation === 'all' ? null : selectedLocation;
+
+      const [statsRes, compRes, peakRes] = await Promise.all([
+        adminAPI.getDashboardStats({ locationId: locationParam, period }),
+        adminAPI.getRevenueComparison({ locationId: locationParam }),
+        adminAPI.getPeakHours({ locationId: locationParam, days: 7 })
       ]);
-      setLocations(locsRes.data);
+
       setStats(statsRes.data);
       setComparison(compRes.data);
       setPeakHours(peakRes.data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching data:', error);
+      alert('Error loading statistics. Please check console for details.');
     }
   };
 
   const handleUpdatePricing = async () => {
-    if (!selectedLocation) {
-      alert('Please select a location');
+    if (!selectedLocation || selectedLocation === 'all') {
+      alert('Please select a specific location to update pricing');
       return;
     }
     try {
@@ -53,7 +71,8 @@ const Performance = () => {
 
   const downloadReport = async (type) => {
     try {
-      const response = await reportsAPI[`export${type}`]({ locationId: selectedLocation });
+      const locationParam = selectedLocation === 'all' ? null : selectedLocation;
+      const response = await reportsAPI[`export${type}`]({ locationId: locationParam });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -79,10 +98,12 @@ const Performance = () => {
 
       <div className="container mx-auto px-6 py-8">
         <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <select onChange={(e) => setSelectedLocation(e.target.value)}
+          <select
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
             className="px-4 py-2 border rounded-lg no-print">
-            <option value="">All Locations</option>
-            {locations.map(loc => <option key={loc._id} value={loc._id}>{loc.name}</option>)}
+            <option value="all">All Locations</option>
+            {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
           </select>
           <select value={period} onChange={(e) => setPeriod(e.target.value)}
             className="px-4 py-2 border rounded-lg no-print">
@@ -184,11 +205,15 @@ const Performance = () => {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold">Pricing Management (per 15 minutes)</h3>
                 <button onClick={() => setShowPricing(!showPricing)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded no-print">
+                  className="px-4 py-2 bg-blue-600 text-white rounded no-print"
+                  disabled={selectedLocation === 'all'}>
                   {showPricing ? 'Cancel' : 'Set Prices'}
                 </button>
               </div>
-              {showPricing && (
+              {selectedLocation === 'all' && (
+                <p className="text-sm text-gray-600 mb-4">Select a specific location to update pricing</p>
+              )}
+              {showPricing && selectedLocation !== 'all' && (
                 <div className="grid md:grid-cols-5 gap-4 no-print">
                   {Object.keys(pricing).map(type => (
                     <div key={type}>

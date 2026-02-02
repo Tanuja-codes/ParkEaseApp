@@ -159,13 +159,17 @@ const UserDashboard = () => {
       setMessage('End time must be after start time');
       return;
     }
+console.log('Fetching slots for location:', selectedLocation.id);
+  console.log('Start time:', bookingData.startTime);
+  console.log('End time:', bookingData.endTime);
 
     try {
       const response = await slotAPI.getAvailable(
-        selectedLocation._id,
+        selectedLocation.id,
         bookingData.startTime,
         bookingData.endTime
       );
+   console.log('Available slots response:', response.data); // Add this
       setAvailableSlots(response.data);
       if (response.data.length === 0) {
         setMessage('No slots available for selected time. Please try different timing.');
@@ -173,6 +177,7 @@ const UserDashboard = () => {
         setMessage(`Found ${response.data.length} available slots!`);
       }
     } catch (error) {
+         console.error('Error fetching slots:', error.response?.data); // Add this
       setMessage('Error fetching slots');
     }
   };
@@ -202,7 +207,7 @@ const UserDashboard = () => {
     try {
       await bookingAPI.create({
         slotId,
-        locationId: selectedLocation._id,
+        locationId: selectedLocation.id,
         ...bookingData
       });
       setMessage('✅ Booking successful! Redirecting to My Bookings...');
@@ -307,10 +312,10 @@ const UserDashboard = () => {
                 {filteredLocations.length > 0 ? (
                   filteredLocations.map(location => (
                     <div
-                      key={location._id}
+                      key={location.id}
                       onClick={() => handleLocationSelect(location)}
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                        selectedLocation?._id === location._id 
+                        selectedLocation?.id === location.id
                           ? 'bg-blue-50 border-blue-500 shadow-md' 
                           : 'border-gray-200 hover:bg-gray-50'
                       }`}
@@ -458,7 +463,7 @@ const UserDashboard = () => {
                   {/* Existing parking locations */}
                   {locations.map(location => (
                     <Marker 
-                      key={location._id} 
+                      key={location.id}
                       position={[location.latitude, location.longitude]}
                       icon={getMarkerIcon(location)}
                       eventHandlers={{

@@ -21,9 +21,15 @@ const Login = () => {
 
     try {
       const response = await authAPI.login(formData);
+      console.log('Login response:', response.data); // Add this to see what you get
+
       const { token, user } = response.data;
+
+      // Store userId in localStorage
+      localStorage.setItem('userId', user.id );
+
       login(user, token);
-      
+
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
