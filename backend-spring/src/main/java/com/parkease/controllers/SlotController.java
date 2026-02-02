@@ -31,17 +31,30 @@ public class SlotController {
 
     // Get available slots for booking
     @GetMapping("/location/{locationId}/available")
-    public ResponseEntity<?> getAvailableSlots(@PathVariable String locationId,
-                                               @RequestParam(required = false) Date startTime) {
-        List<Slot> slots = slotRepository.findByLocationAndStatusAndIsActiveTrueOrderBySlotNoAsc(locationId, "available");
+    public ResponseEntity<?> getAvailableSlots(
+            @PathVariable String locationId,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        try {
+            List<Slot> slots = slotRepository.findByLocationAndStatusAndIsActiveTrueOrderBySlotNoAsc(locationId, "available");
 
-        // Only filter by nextAvailableTime if startTime is provided
-        if (startTime != null) {
-            slots.removeIf(slot -> slot.getNextAvailableTime() != null &&
-                    slot.getNextAvailableTime().after(startTime));
+            // Only filter by nextAvailableTime if startTime is provided
+            if (startTime != null && !startTime.isEmpty()) {
+                // Parse the ISO date string to Date
+                java.text.SimpleDateFormat isoFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm");
+                Date startDate = isoFormat.parse(startTime);
+
+                slots.removeIf(slot -> slot.getNextAvailableTime() != null &&
+                        slot.getNextAvailableTime().after(startDate));
+            }
+
+            return ResponseEntity.ok(slots);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(
+                    Map.of("message", "Error fetching available slots", "error", e.getMessage())
+            );
         }
-
-        return ResponseEntity.ok(slots);
     }
 
     // Create slot (admin only)

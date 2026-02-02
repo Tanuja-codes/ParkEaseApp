@@ -165,7 +165,7 @@ const MyBookings = () => {
             <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg mb-2">
               <p className="text-sm text-yellow-800 font-medium">✓ Your booking time has started! You can now start the timer.</p>
             </div>
-            <button onClick={() => handleStartTimer(booking._id)}
+            <button onClick={() => handleStartTimer(booking.id)}
               className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-lg">
               🚗 Start Timer
             </button>
@@ -181,12 +181,12 @@ const MyBookings = () => {
         
         {/* Show active timer */}
         {booking.timerStarted && !booking.timerEndedAt && (
-          <Timer booking={booking} onStop={() => handleStopTimer(booking._id)} onExtend={() => handleExtend(booking._id)} />
+          <Timer booking={booking} onStop={() => handleStopTimer(booking.id)} onExtend={() => handleExtend(booking.id)} />
         )}
         
         {/* Cancel button for upcoming bookings */}
         {type === 'upcoming' && !booking.timerStarted && now < startTime && (
-          <button onClick={() => handleCancel(booking._id)}
+          <button onClick={() => handleCancel(booking.id)}
             className="w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold mt-2">
             ❌ Cancel Booking
           </button>
@@ -194,7 +194,7 @@ const MyBookings = () => {
         
         {/* Delete button for past or cancelled bookings */}
         {type === 'past' && (booking.bookingStatus === 'completed' || booking.bookingStatus === 'cancelled') && (
-          <button onClick={() => handleDelete(booking._id)}
+          <button onClick={() => handleDelete(booking.id)}
             className="w-full py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold mt-2">
             🗑️ Delete Booking
           </button>
@@ -223,7 +223,7 @@ const MyBookings = () => {
             <h2 className="text-2xl font-bold mb-4">Current Bookings</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {bookings.current.length > 0 ? bookings.current.map(b => (
-                <BookingCard key={b._id} booking={b} type="current" />
+                <BookingCard key={b.id} booking={b} type="current" />
               )) : <p className="text-gray-500">No current bookings</p>}
             </div>
           </section>
@@ -232,7 +232,7 @@ const MyBookings = () => {
             <h2 className="text-2xl font-bold mb-4">Upcoming Bookings</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {bookings.upcoming.length > 0 ? bookings.upcoming.map(b => (
-                <BookingCard key={b._id} booking={b} type="upcoming" />
+                <BookingCard key={b.id} booking={b} type="upcoming" />
               )) : <p className="text-gray-500">No upcoming bookings</p>}
             </div>
           </section>
@@ -241,7 +241,7 @@ const MyBookings = () => {
             <h2 className="text-2xl font-bold mb-4">Past Bookings</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {bookings.past.length > 0 ? bookings.past.map(b => (
-                <BookingCard key={b._id} booking={b} type="past" />
+                <BookingCard key={b.id} booking={b} type="past" />
               )) : <p className="text-gray-500">No past bookings</p>}
             </div>
           </section>

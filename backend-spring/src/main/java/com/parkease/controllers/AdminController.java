@@ -213,8 +213,16 @@ public class AdminController {
             }
 
             long totalSlots = slotRepository.count();
-            long availableSlots = slotRepository.findByLocationAndStatusAndIsActiveTrueOrderBySlotNoAsc(locationId, "available").size();
-            long bookedSlots = slotRepository.findByLocationAndStatusAndIsActiveTrueOrderBySlotNoAsc(locationId, "booked").size();
+            long availableSlots = 0;
+            long bookedSlots = 0;
+            if (locationId != null && !locationId.isEmpty()) {
+                availableSlots = slotRepository.findByLocationAndStatusAndIsActiveTrueOrderBySlotNoAsc(locationId, "available").size();
+                bookedSlots = slotRepository.findByLocationAndStatusAndIsActiveTrueOrderBySlotNoAsc(locationId, "booked").size();
+            } else {
+                // For all locations
+                availableSlots = slotRepository.findAll().stream().filter(s -> "available".equals(s.getStatus()) && s.isActive()).count();
+                bookedSlots = slotRepository.findAll().stream().filter(s -> "booked".equals(s.getStatus()) && s.isActive()).count();
+            }
 
             double avgDuration = bookings.isEmpty() ? 0 :
                     bookings.stream().mapToInt(Booking::getDuration).average().orElse(0);
@@ -235,6 +243,164 @@ public class AdminController {
         }
     }
 
+    // --- REVENUE COMPARISON (ADMIN ONLY) ---
+    @GetMapping("/statistics/revenue-comparison")
+    public ResponseEntity<?> getRevenueComparison(@RequestParam(required = false) String locationId) {
+        try {
+            List<Booking> allBookings = bookingRepository.findAll();
+
+            // Filter by location if specified
+            if (locationId != null && !locationId.isEmpty()) {
+                allBookings.removeIf(b -> !b.getLocation().equals(locationId));
+            }
+
+            Date now = new Date();
+            Calendar cal = Calendar.getInstance();
+
+            // Daily (last 24 hours)
+            cal.setTime(now);
+            cal.add(Calendar.DAY_OF_MONTH, -1);
+            Date dayAgo = cal.getTime();
+
+            List<Booking> dailyBookings = new ArrayList<>();
+            for (Booking b : allBookings) {
+                if (b.getCreatedAt().after(dayAgo)) {
+                    dailyBookings.add(b);
+                }
+            }
+
+            double dailyRevenue = dailyBookings.stream()
+                    .filter(b -> "completed".equals(b.getPaymentStatus()))
+                    .mapToDouble(Booking::getTotalAmount)
+                    .sum();
+
+            // Weekly (last 7 days)
+            cal.setTime(now);
+            cal.add(Calendar.DAY_OF_MONTH, -7);
+            Date weekAgo = cal.getTime();
+
+            List<Booking> weeklyBookings = new ArrayList<>();
+            for (Booking b : allBookings) {
+                if (b.getCreatedAt().after(weekAgo)) {
+                    weeklyBookings.add(b);
+                }
+            }
+
+            double weeklyRevenue = weeklyBookings.stream()
+                    .filter(b -> "completed".equals(b.getPaymentStatus()))
+                    .mapToDouble(Booking::getTotalAmount)
+                    .sum();
+
+            // Monthly (last 30 days)
+            cal.setTime(now);
+            cal.add(Calendar.DAY_OF_MONTH, -30);
+            Date monthAgo = cal.getTime();
+
+            List<Booking> monthlyBookings = new ArrayList<>();
+            for (Booking b : allBookings) {
+                if (b.getCreatedAt().after(monthAgo)) {
+                    monthlyBookings.add(b);
+                }
+            }
+
+            double monthlyRevenue = monthlyBookings.stream()
+                    .filter(b -> "completed".equals(b.getPaymentStatus()))
+                    .mapToDouble(Booking::getTotalAmount)
+                    .sum();
+
+            return ResponseEntity.ok(Map.of(
+                    "daily", Map.of(
+                            "revenue", Math.round(dailyRevenue * 100) / 100.0,
+                            "bookings", dailyBookings.size()
+                    ),
+                    "weekly", Map.of(
+                            "revenue", Math.round(weeklyRevenue * 100) / 100.0,
+                            "bookings", weeklyBookings.size()
+                    ),
+                    "monthly", Map.of(
+                            "revenue", Math.round(monthlyRevenue * 100) / 100.0,
+                            "bookings", monthlyBookings.size()
+                    )
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(
+                    Map.of("message", "Error fetching revenue comparison", "error", e.getMessage())
+            );
+        }
+    }
+
+    // --- PEAK HOURS ANALYSIS (ADMIN ONLY) ---
+    @GetMapping("/statistics/peak-hours")
+    public ResponseEntity<?> getPeakHours(
+            @RequestParam(required = false) String locationId,
+            @RequestParam(defaultValue = "7") int days) {
+        try {
+            List<Booking> allBookings = bookingRepository.findAll();
+
+            // Filter by location and last N days
+            Date now = new Date();
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(now);
+            cal.add(Calendar.DAY_OF_MONTH, -days);
+            Date daysAgo = cal.getTime();
+
+            List<Booking> filteredBookings = new ArrayList<>();
+            for (Booking b : allBookings) {
+                boolean match = b.getCreatedAt().after(daysAgo);
+                if (locationId != null && !locationId.isEmpty()) {
+                    match = match && b.getLocation().equals(locationId);
+                }
+                if (match) {
+                    filteredBookings.add(b);
+                }
+            }
+
+            // Count bookings by hour
+            Map<Integer, Integer> hourlyCount = new HashMap<>();
+            for (int i = 0; i < 24; i++) {
+                hourlyCount.put(i, 0);
+            }
+
+            for (Booking b : filteredBookings) {
+                Calendar bookingCal = Calendar.getInstance();
+                bookingCal.setTime(b.getStartTime());
+                int hour = bookingCal.get(Calendar.HOUR_OF_DAY);
+                hourlyCount.put(hour, hourlyCount.get(hour) + 1);
+            }
+
+            // Create hourly distribution
+            List<Map<String, Object>> hourlyDistribution = new ArrayList<>();
+            for (int i = 0; i < 24; i++) {
+                Map<String, Object> hourData = new HashMap<>();
+                hourData.put("hour", i);
+                hourData.put("bookings", hourlyCount.get(i));
+                hourlyDistribution.add(hourData);
+            }
+
+            // Get peak hours (sorted by bookings descending)
+            List<Map<String, Object>> peakHours = new ArrayList<>();
+            List<Map.Entry<Integer, Integer>> sortedEntries = new ArrayList<>(hourlyCount.entrySet());
+            sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+
+            for (Map.Entry<Integer, Integer> entry : sortedEntries) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("hour", entry.getKey());
+                map.put("bookings", entry.getValue());
+                peakHours.add(map);
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "hourlyDistribution", hourlyDistribution,
+                    "peakHours", peakHours
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(
+                    Map.of("message", "Error fetching peak hours", "error", e.getMessage())
+            );
+        }
+    }
     // --- DELETE BOOKING (ADMIN ONLY) ---
     @DeleteMapping("/bookings/{bookingId}")
     public ResponseEntity<?> deleteBooking(@PathVariable String bookingId) {

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @RestController
@@ -31,7 +32,7 @@ public class BookingController {
     }
 
     // --- CREATE BOOKING ---
-    @PostMapping("/")
+    @PostMapping("")
     public ResponseEntity<?> createBooking(@RequestBody Map<String, String> body,
                                            @RequestHeader("userId") String userId) {
         try {
@@ -39,9 +40,10 @@ public class BookingController {
             String locationId = body.get("locationId");
             String vehicleNumber = body.get("vehicleNumber");
             String vehicleType = body.get("vehicleType");
-            Date bookingDate = new Date(body.get("bookingDate"));
-            Date startTime = new Date(body.get("startTime"));
-            Date endTime = new Date(body.get("endTime"));
+            SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm");
+            Date bookingDate = isoFormat.parse(body.get("bookingDate"));
+            Date startTime = isoFormat.parse(body.get("startTime"));
+            Date endTime = isoFormat.parse(body.get("endTime"));
 
             // Verify slot availability
             Optional<Slot> slotOpt = slotRepository.findById(slotId);
