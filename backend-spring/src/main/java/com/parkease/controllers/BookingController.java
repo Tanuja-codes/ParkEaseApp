@@ -36,14 +36,28 @@ public class BookingController {
     public ResponseEntity<?> createBooking(@RequestBody Map<String, String> body,
                                            @RequestHeader("userId") String userId) {
         try {
+            // ADD THESE DEBUG PRINTS
+            System.out.println("========== BOOKING REQUEST ==========");
+            System.out.println("Received body: " + body);
+            System.out.println("userId: " + userId);
+            System.out.println("slotId: " + body.get("slotId"));
+            System.out.println("locationId: " + body.get("locationId"));
+            System.out.println("bookingDate: " + body.get("bookingDate"));
+            System.out.println("startTime: " + body.get("startTime"));
+            System.out.println("endTime: " + body.get("endTime"));
+            System.out.println("=====================================");
+
             String slotId = body.get("slotId");
             String locationId = body.get("locationId");
             String vehicleNumber = body.get("vehicleNumber");
             String vehicleType = body.get("vehicleType");
-            SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm");
-            Date bookingDate = isoFormat.parse(body.get("bookingDate"));
-            Date startTime = isoFormat.parse(body.get("startTime"));
-            Date endTime = isoFormat.parse(body.get("endTime"));
+
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm");
+
+            Date bookingDate = dateFormat.parse(body.get("bookingDate"));
+            Date startTime = dateTimeFormat.parse(body.get("startTime"));
+            Date endTime = dateTimeFormat.parse(body.get("endTime"));
 
             // Verify slot availability
             Optional<Slot> slotOpt = slotRepository.findById(slotId);

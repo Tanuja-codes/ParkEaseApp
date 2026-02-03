@@ -206,7 +206,7 @@ console.log('Fetching slots for location:', selectedLocation.id);
     setLoading(true);
     try {
       await bookingAPI.create({
-        slotId,
+        slotId: slotId,
         locationId: selectedLocation.id,
         ...bookingData
       });
@@ -510,7 +510,7 @@ console.log('Fetching slots for location:', selectedLocation.id);
                           ? 'border-red-500 bg-red-50 cursor-not-allowed' 
                           : 'border-green-200 bg-green-50 cursor-pointer hover:shadow-md'
                       }`}
-                      onClick={() => slot.status === 'maintenance' && handleBooking(slot._id, slot.status)}
+                      onClick={() => slot.status === 'maintenance' && handleBooking(slot.id, slot.status)}
                     >
                       <div className="flex justify-between items-center">
                         <div>
@@ -534,7 +534,7 @@ console.log('Fetching slots for location:', selectedLocation.id);
                         </div>
                         {slot.status !== 'maintenance' && (
                           <button 
-                            onClick={() => handleBooking(slot._id, slot.status)} 
+                            onClick={() => handleBooking(slot.id, slot.status)}
                             disabled={loading}
                             className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all"
                           >
