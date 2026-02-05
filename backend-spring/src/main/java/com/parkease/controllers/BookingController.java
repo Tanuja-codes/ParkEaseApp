@@ -31,33 +31,80 @@ public class BookingController {
         return "BK" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
+    // Helper method to populate booking with slot and location details
+    private Map<String, Object> populateBookingDetails(Booking booking) {
+        Map<String, Object> bookingMap = new HashMap<>();
+
+        // Copy all booking fields
+        bookingMap.put("_id", booking.getId());
+        bookingMap.put("bookingId", booking.getBookingId());
+        bookingMap.put("user", booking.getUser());
+        bookingMap.put("vehicleNumber", booking.getVehicleNumber());
+        bookingMap.put("vehicleType", booking.getVehicleType());
+        bookingMap.put("bookingDate", booking.getBookingDate());
+        bookingMap.put("startTime", booking.getStartTime());
+        bookingMap.put("endTime", booking.getEndTime());
+        bookingMap.put("duration", booking.getDuration());
+        bookingMap.put("baseAmount", booking.getBaseAmount());
+        bookingMap.put("totalAmount", booking.getTotalAmount());
+        bookingMap.put("paymentStatus", booking.getPaymentStatus());
+        bookingMap.put("paymentId", booking.getPaymentId());
+        bookingMap.put("bookingStatus", booking.getBookingStatus());
+        bookingMap.put("timerStarted", booking.isTimerStarted());
+        bookingMap.put("actualStartTime", booking.getActualStartTime());
+        bookingMap.put("actualEndTime", booking.getActualEndTime());
+        bookingMap.put("timerEndedAt", booking.getTimerEndedAt());
+        bookingMap.put("createdAt", booking.getCreatedAt());
+
+        // Populate slot details
+        Optional<Slot> slotOpt = slotRepository.findById(booking.getSlot());
+        if (slotOpt.isPresent()) {
+            Slot slot = slotOpt.get();
+            Map<String, Object> slotMap = new HashMap<>();
+            slotMap.put("_id", slot.getId());
+            slotMap.put("slotNo", slot.getSlotNo());
+            slotMap.put("vehicleType", slot.getVehicleType());
+            slotMap.put("status", slot.getStatus());
+            bookingMap.put("slot", slotMap);
+            bookingMap.put("slotNo", slot.getSlotNo()); // Add direct slotNo field
+        } else {
+            bookingMap.put("slot", null);
+            bookingMap.put("slotNo", "N/A");
+        }
+
+        // Populate location details
+        Optional<Location> locationOpt = locationRepository.findById(booking.getLocation());
+        if (locationOpt.isPresent()) {
+            Location location = locationOpt.get();
+            Map<String, Object> locationMap = new HashMap<>();
+            locationMap.put("_id", location.getId());
+            locationMap.put("name", location.getName());
+            locationMap.put("address", location.getAddress());
+            locationMap.put("latitude", location.getLatitude());
+            locationMap.put("longitude", location.getLongitude());
+            bookingMap.put("location", locationMap);
+        } else {
+            bookingMap.put("location", null);
+        }
+
+        return bookingMap;
+    }
+
     // --- CREATE BOOKING ---
     @PostMapping("")
     public ResponseEntity<?> createBooking(@RequestBody Map<String, String> body,
                                            @RequestHeader("userId") String userId) {
         try {
-            // ADD THESE DEBUG PRINTS
-            System.out.println("========== BOOKING REQUEST ==========");
-            System.out.println("Received body: " + body);
-            System.out.println("userId: " + userId);
-            System.out.println("slotId: " + body.get("slotId"));
-            System.out.println("locationId: " + body.get("locationId"));
-            System.out.println("bookingDate: " + body.get("bookingDate"));
-            System.out.println("startTime: " + body.get("startTime"));
-            System.out.println("endTime: " + body.get("endTime"));
-            System.out.println("=====================================");
-
             String slotId = body.get("slotId");
             String locationId = body.get("locationId");
             String vehicleNumber = body.get("vehicleNumber");
             String vehicleType = body.get("vehicleType");
 
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm");
-
+            SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm");
             Date bookingDate = dateFormat.parse(body.get("bookingDate"));
-            Date startTime = dateTimeFormat.parse(body.get("startTime"));
-            Date endTime = dateTimeFormat.parse(body.get("endTime"));
+            Date startTime = isoFormat.parse(body.get("startTime"));
+            Date endTime = isoFormat.parse(body.get("endTime"));
 
             // Verify slot availability
             Optional<Slot> slotOpt = slotRepository.findById(slotId);
@@ -111,9 +158,10 @@ public class BookingController {
 
             return ResponseEntity.status(201).body(Map.of(
                     "message", "Booking created successfully",
-                    "booking", booking
+                    "booking", populateBookingDetails(booking)
             ));
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("message", "Error creating booking", "error", e.getMessage()));
         }
     }
@@ -127,33 +175,42 @@ public class BookingController {
             if (status != null) {
                 bookings = bookingRepository.findByUserAndBookingStatus(userId, status);
             } else {
-                bookings = bookingRepository.findByUserAndBookingStatus(userId, "upcoming");
+                bookings = new ArrayList<>();
+                bookings.addAll(bookingRepository.findByUserAndBookingStatus(userId, "upcoming"));
                 bookings.addAll(bookingRepository.findByUserAndBookingStatus(userId, "active"));
                 bookings.addAll(bookingRepository.findByUserAndBookingStatus(userId, "completed"));
                 bookings.addAll(bookingRepository.findByUserAndBookingStatus(userId, "cancelled"));
             }
 
             Date now = new Date();
-            Map<String, List<Booking>> categorized = new HashMap<>();
+            Map<String, List<Map<String, Object>>> categorized = new HashMap<>();
             categorized.put("past", new ArrayList<>());
             categorized.put("current", new ArrayList<>());
             categorized.put("upcoming", new ArrayList<>());
 
             for (Booking booking : bookings) {
+                Map<String, Object> populatedBooking = populateBookingDetails(booking);
+
                 if ("completed".equals(booking.getBookingStatus()) || "cancelled".equals(booking.getBookingStatus())) {
-                    categorized.get("past").add(booking);
+                    categorized.get("past").add(populatedBooking);
                 } else if (booking.getStartTime().before(now) && booking.getEndTime().after(now)
                         && "active".equals(booking.getBookingStatus())) {
-                    categorized.get("current").add(booking);
+                    categorized.get("current").add(populatedBooking);
                 } else if (booking.getStartTime().after(now) && "upcoming".equals(booking.getBookingStatus())) {
-                    categorized.get("upcoming").add(booking);
+                    categorized.get("upcoming").add(populatedBooking);
+                } else if (booking.getEndTime().before(now) && !"completed".equals(booking.getBookingStatus()) && !"cancelled".equals(booking.getBookingStatus())) {
+                    // Auto-complete past bookings that weren't completed
+                    booking.setBookingStatus("completed");
+                    bookingRepository.save(booking);
+                    categorized.get("past").add(populatedBooking);
                 } else {
-                    categorized.get("past").add(booking);
+                    categorized.get("past").add(populatedBooking);
                 }
             }
 
             return ResponseEntity.ok(categorized);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("message", "Error fetching bookings", "error", e.getMessage()));
         }
     }
@@ -173,7 +230,7 @@ public class BookingController {
             return ResponseEntity.status(403).body(Map.of("message", "Access denied"));
         }
 
-        return ResponseEntity.ok(booking);
+        return ResponseEntity.ok(populateBookingDetails(booking));
     }
     // --- START TIMER ---
     @PostMapping("/{id}/start-timer")
@@ -202,7 +259,7 @@ public class BookingController {
         booking.setBookingStatus("active");
         bookingRepository.save(booking);
 
-        return ResponseEntity.ok(Map.of("message", "Timer started successfully", "booking", booking));
+        return ResponseEntity.ok(Map.of("message", "Timer started successfully", "booking", populateBookingDetails(booking)));
     }
 
     // --- STOP TIMER ---
@@ -246,7 +303,7 @@ public class BookingController {
             locationRepository.save(location);
         });
 
-        return ResponseEntity.ok(Map.of("message", "Timer stopped and slot released successfully", "booking", booking));
+        return ResponseEntity.ok(Map.of("message", "Timer stopped and slot released successfully", "booking", populateBookingDetails(booking)));
     }
 
     // --- CANCEL BOOKING ---
@@ -289,7 +346,7 @@ public class BookingController {
             locationRepository.save(location);
         });
 
-        return ResponseEntity.ok(Map.of("message", "Booking cancelled successfully", "booking", booking));
+        return ResponseEntity.ok(Map.of("message", "Booking cancelled successfully", "booking",populateBookingDetails(booking)));
     }
 
     // --- EXTEND BOOKING ---
@@ -323,7 +380,7 @@ public class BookingController {
 
         return ResponseEntity.ok(Map.of(
                 "message", "Booking extended by 15 minutes for ₹10",
-                "booking", booking,
+                "booking", populateBookingDetails(booking),
                 "newEndTime", booking.getEndTime(),
                 "newTotalAmount", booking.getTotalAmount()
         ));
