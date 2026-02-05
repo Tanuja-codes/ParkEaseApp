@@ -55,14 +55,17 @@ const AdminDashboard = () => {
     fetchLocations();
   }, []);
 
-  const fetchLocations = async () => {
-    try {
-      const response = await locationAPI.getAll();
-      setLocations(response.data);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
+ const fetchLocations = async () => {
+   try {
+     const response = await locationAPI.getAll();
+     console.log('Full response from backend:', response.data);
+     console.log('First location:', response.data[0]);
+     console.log('Does first location have createdBy?', response.data[0]?.createdBy);
+     setLocations(response.data);
+   } catch (error) {
+     console.error('Error:', error);
+   }
+ };
 
   // Geocoding function
   const searchLocationOnMap = async () => {
@@ -74,24 +77,24 @@ const AdminDashboard = () => {
 
     setSearchLoading(true);
     setError('');
-    
-    try {
-    const response = await fetch(
-      `http://localhost:5000/api/geocode?q=${encodeURIComponent(locationSearch)}`);
 
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/geocode?q=${encodeURIComponent(locationSearch)}`
+      );
       const data = await response.json();
 
       if (data && data.length > 0) {
         const result = data[0];
         const lat = parseFloat(result.lat);
         const lon = parseFloat(result.lon);
-        
+
         setSearchedLocation({
           name: result.display_name,
           lat,
           lon
         });
-        
+
         // Auto-fill form fields
         setFormData({
           ...formData,
@@ -100,10 +103,10 @@ const AdminDashboard = () => {
           latitude: lat.toString(),
           longitude: lon.toString()
         });
-        
+
         setMapCenter([lat, lon]);
         setMapZoom(16);
-        
+
         setError('✅ Location found! Fields auto-filled. Add Location ID to save.');
         setTimeout(() => setError(''), 5000);
       } else {
@@ -131,6 +134,8 @@ const AdminDashboard = () => {
       alert('✅ Location created successfully');
       setShowAddForm(false);
       setFormData({ locationId: '', name: '', address: '', latitude: '', longitude: '' });
+      setSearchedLocation(null); // Clear searched location
+      setLocationSearch(''); // Clear search input
       fetchLocations();
     } catch (error) {
       setError(error.response?.data?.message || 'Error creating location');
@@ -142,25 +147,40 @@ const AdminDashboard = () => {
     setMapZoom(16);
   };
 
+const handleDeleteLocation = async (e, locationId, locationName) => {
+  e.stopPropagation(); // Prevent card click
+
+  if (window.confirm(`Are you sure you want to delete "${locationName}"? This action cannot be undone.`)) {
+    try {
+      console.log('Deleting location with ID:', locationId); // DEBUG
+      await locationAPI.delete(locationId);
+      alert('✅ Location deleted successfully');
+      fetchLocations();
+    } catch (error) {
+      console.error('Delete error:', error.response?.data); // DEBUG
+      alert('❌ ' + (error.response?.data?.message || 'Error deleting location'));
+    }
+  }
+};
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-gray-900 text-white">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">🅿️ Admin Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <button onClick={() => navigate('/admin/slots')} 
+            <button onClick={() => navigate('/admin/slots')}
               className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 font-medium">
               🎯 Slots
             </button>
-            <button onClick={() => navigate('/admin/performance')} 
+            <button onClick={() => navigate('/admin/performance')}
               className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 font-medium">
               📊 Performance
             </button>
-            <button onClick={() => navigate('/admin/users')} 
+            <button onClick={() => navigate('/admin/users')}
               className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 font-medium">
               👥 Users
             </button>
-            <button onClick={logout} 
+            <button onClick={logout}
               className="px-4 py-2 border border-white rounded hover:bg-gray-800 font-medium">
               Logout
             </button>
@@ -178,7 +198,10 @@ const AdminDashboard = () => {
         </div>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          <div className={`mb-4 p-4 rounded-lg font-semibold ${
+            error.includes('✅') ? 'bg-green-100 border border-green-400 text-green-700' :
+            'bg-red-100 border border-red-400 text-red-700'
+          }`}>
             {error}
           </div>
         )}
@@ -186,7 +209,7 @@ const AdminDashboard = () => {
         {showAddForm && (
           <div className="bg-white p-6 rounded-xl shadow-lg mb-6 border-2 border-blue-200">
             <h3 className="text-xl font-bold mb-4">Create New Location</h3>
-            
+
             {/* Location Search */}
             <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <label className="block text-sm font-semibold mb-2">🗺️ Search Location on Map (Optional)</label>
@@ -233,19 +256,19 @@ const AdminDashboard = () => {
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Latitude * (Auto-filled)</label>
+                <label className="block text-sm font-medium mb-2">Latitude *</label>
                 <input placeholder="Auto-filled from search" type="number" step="any" value={formData.latitude}
                   onChange={(e) => setFormData({...formData, latitude: e.target.value})}
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50" required />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Longitude * (Auto-filled)</label>
+                <label className="block text-sm font-medium mb-2">Longitude *</label>
                 <input placeholder="Auto-filled from search" type="number" step="any" value={formData.longitude}
                   onChange={(e) => setFormData({...formData, longitude: e.target.value})}
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50" required />
               </div>
               <div className="md:col-span-2">
-                <button type="submit" 
+                <button type="submit"
                   className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-lg">
                   ✅ Create Location
                 </button>
@@ -262,10 +285,22 @@ const AdminDashboard = () => {
               {locations.length > 0 ? (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
                   {locations.map(loc => (
-                    <div key={loc._id} 
+                    <div key={loc.id}
                       onClick={() => handleLocationClick(loc)}
-                      className="p-4 border-2 rounded-lg hover:shadow-md transition-all cursor-pointer hover:border-blue-400 bg-white">
-                      <div className="flex justify-between items-start">
+                      className="p-4 border-2 rounded-lg hover:shadow-md transition-all cursor-pointer hover:border-blue-400 bg-white relative">
+
+                      {/* Delete Button - Top Right */}
+                      <button
+                        onClick={(e) => handleDeleteLocation(e, loc.id, loc.name)}
+                        className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors z-10"
+                        title="Delete Location"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+
+                      <div className="flex justify-between items-start pr-10">
                         <div className="flex-1">
                           <h4 className="font-bold text-lg">{loc.name}</h4>
                           <p className="text-sm text-gray-600 mt-1">{loc.address}</p>
@@ -305,29 +340,35 @@ const AdminDashboard = () => {
           {/* Map */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-xl font-bold mb-4">🗺️ Map View</h3>
-            
+
             {/* Map Legend */}
             <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
               <p className="text-sm font-semibold mb-2">Legend:</p>
-              <div className="flex items-center text-sm">
-                <span className="w-6 h-6 rounded-full bg-blue-500 mr-2 border-2 border-white shadow flex items-center justify-center text-white font-bold text-xs">P</span>
-                <span>Parking Locations</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center text-sm">
+                  <span className="w-6 h-6 rounded-full bg-blue-500 mr-2 border-2 border-white shadow flex items-center justify-center text-white font-bold text-xs">P</span>
+                  <span>Parking Locations</span>
+                </div>
+                <div className="flex items-center text-sm">
+                  <span className="w-6 h-6 rounded-full bg-red-500 mr-2 border-2 border-white shadow flex items-center justify-center text-white font-bold text-xs">📍</span>
+                  <span>Searched Location</span>
+                </div>
               </div>
               <p className="text-xs text-gray-600 mt-2">Click on a location card to zoom to its position on the map</p>
             </div>
 
             <div style={{height: '500px', borderRadius: '8px', overflow: 'hidden'}}>
-              <MapContainer 
-                center={mapCenter} 
-                zoom={mapZoom} 
+              <MapContainer
+                center={mapCenter}
+                zoom={mapZoom}
                 style={{height: '100%', width: '100%'}}
               >
-                <TileLayer 
+                <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 />
                 <MapController center={mapCenter} zoom={mapZoom} />
-                
+
                 {/* Searched location marker */}
                 {searchedLocation && (
                   <Marker position={[searchedLocation.lat, searchedLocation.lon]} icon={searchIcon}>
@@ -343,10 +384,10 @@ const AdminDashboard = () => {
                     </Popup>
                   </Marker>
                 )}
-                
+
                 {/* Existing parking locations */}
                 {locations.map(loc => (
-                  <Marker key={loc._id} position={[loc.latitude, loc.longitude]} icon={locationIcon}>
+                  <Marker key={loc.id} position={[loc.latitude, loc.longitude]} icon={locationIcon}>
                     <Popup>
                       <div className="text-sm">
                         <strong className="text-base">{loc.name}</strong><br />

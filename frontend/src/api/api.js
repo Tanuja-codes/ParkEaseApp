@@ -14,6 +14,7 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
+   const userStr = localStorage.getItem('user');
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -23,6 +24,16 @@ api.interceptors.request.use(
       config.headers['userId'] = userId;
     }
 
+ if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.role) {
+          config.headers['role'] = user.role;
+        }
+      } catch (e) {
+        console.error('Error parsing user from localStorage:', e);
+      }
+    }
     return config;
   },
   (error) => {

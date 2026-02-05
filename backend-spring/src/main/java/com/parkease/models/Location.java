@@ -1,8 +1,11 @@
 package com.parkease.models;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.Date;
 import java.util.Map;
 
 @Document(collection = "locations")
@@ -11,27 +14,37 @@ public class Location {
     @Id
     private String id;
 
+    @NotBlank
     private String locationId;
+
+    @NotBlank
     private String name;
+
+    @NotBlank
     private String address;
+
+    @NotNull
     private Double latitude;
+
+    @NotNull
     private Double longitude;
+
     private int totalSlots = 0;
     private int availableSlots = 0;
 
-    // Pricing stored as a map (car, bike, bus, etc.)
     private Map<String, Integer> pricing = Map.of(
-            "car", 15,
-            "bike", 10,
-            "bus", 25,
-            "van", 20,
-            "truck", 22
+            "car", 15, "bike", 10, "bus", 25, "van", 20, "truck", 22
     );
 
-    private String createdBy; // Reference to User ID
     private boolean isActive = true;
 
-    // --- Getters and Setters ---
+    // NEW FIELD - Track which admin created this location
+    private String createdBy; // Admin's userId
+
+    private Date createdAt = new Date();
+    private Date updatedAt = new Date();
+
+    // Getters and Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -59,9 +72,16 @@ public class Location {
     public Map<String, Integer> getPricing() { return pricing; }
     public void setPricing(Map<String, Integer> pricing) { this.pricing = pricing; }
 
+    public boolean isActive() { return isActive; }
+    public void setActive(boolean active) { isActive = active; }
+
+    // NEW GETTER/SETTER
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 
-    public boolean isActive() { return isActive; }
-    public void setActive(boolean active) { isActive = active; }
+    public Date getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
+
+    public Date getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Date updatedAt) { this.updatedAt = updatedAt; }
 }
